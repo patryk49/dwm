@@ -44,16 +44,16 @@ static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen win
 
 static const Layout layouts[] = {
 	/* symbol    arrange function */
-	{ "[] ",     tile },    /* first entry is default */
-	{ ">< ",     NULL },    /* no layout function means floating behavior */
+	{ "[ ]",     tile },    /* first entry is default */
 	{ "[/]",     dwindle },
+//	{ "><",      NULL },    /* no layout function means floating behavior */
 };
 
 /* key definitions */
 #define MODKEY Mod4Mask
 #define TAGKEYS(KEY,TAG) \
 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
-	{ MODKEY|ControlMask,           KEY,      toggleview,     {.ui = 1 << TAG} }, \
+	{ MODKEY|Mod1Mask,              KEY,      toggleview,     {.ui = 1 << TAG} }, \
 	{ MODKEY|ShiftMask,             KEY,      tag,            {.ui = 1 << TAG} }, \
 //	{ MODKEY|ControlMask|ShiftMask, KEY,      toggletag,      {.ui = 1 << TAG} },
 
@@ -93,12 +93,28 @@ static Key keys[] = {
 	{ MODKEY,                       XK_space,     togglefloating, {0} },
 	{ MODKEY,                       XK_0,         view,           {.ui = ~0 } },
 	{ MODKEY|ShiftMask,             XK_0,         tag,            {.ui = ~0 } },
-	{ MODKEY,                       XK_comma,     incnmaster,      {.i = -1 } },
-	{ MODKEY,                       XK_period,    incnmaster,      {.i = +1 } },
+	{ MODKEY,                       XK_comma,     incnmaster,     {.i = -1 } },
+	{ MODKEY,                       XK_period,    incnmaster,     {.i = +1 } },
 //	{ MODKEY,                       XK_comma,     focusmon,       {.i = -1 } },
 //	{ MODKEY,                       XK_period,    focusmon,       {.i = +1 } },
 //	{ MODKEY|ShiftMask,             XK_comma,     tagmon,         {.i = -1 } },
 //	{ MODKEY|ShiftMask,             XK_period,    tagmon,         {.i = +1 } },
+	{ MODKEY,                       XK_Down,      moveresize,     {.v = (int []){ 0, 25, 0, 0 } } },
+	{ MODKEY,                       XK_Up,        moveresize,     {.v = (int []){ 0, -25, 0, 0 } } },
+	{ MODKEY,                       XK_Right,     moveresize,     {.v = (int []){ 25, 0, 0, 0 } } },
+	{ MODKEY,                       XK_Left,      moveresize,     {.v = (int []){ -25, 0, 0, 0 } } },
+	{ MODKEY|ShiftMask,             XK_Down,      moveresize,     {.v = (int []){ 0, 0, 0, 25 } } },
+	{ MODKEY|ShiftMask,             XK_Up,        moveresize,     {.v = (int []){ 0, 0, 0, -25 } } },
+	{ MODKEY|ShiftMask,             XK_Right,     moveresize,     {.v = (int []){ 0, 0, 25, 0 } } },
+	{ MODKEY|ShiftMask,             XK_Left,      moveresize,     {.v = (int []){ 0, 0, -25, 0 } } },
+	{ MODKEY|Mod1Mask,              XK_j,         moveresize,     {.v = (int []){ 0, 25, 0, 0 } } },
+	{ MODKEY|Mod1Mask,              XK_k,         moveresize,     {.v = (int []){ 0, -25, 0, 0 } } },
+	{ MODKEY|Mod1Mask,              XK_l,         moveresize,     {.v = (int []){ 25, 0, 0, 0 } } },
+	{ MODKEY|Mod1Mask,              XK_h,         moveresize,     {.v = (int []){ -25, 0, 0, 0 } } },
+	{ MODKEY|Mod1Mask|ShiftMask,    XK_j,         moveresize,     {.v = (int []){ 0, 0, 0, 25 } } },
+	{ MODKEY|Mod1Mask|ShiftMask,    XK_k,         moveresize,     {.v = (int []){ 0, 0, 0, -25 } } },
+	{ MODKEY|Mod1Mask|ShiftMask,    XK_l,         moveresize,     {.v = (int []){ 0, 0, 25, 0 } } },
+	{ MODKEY|Mod1Mask|ShiftMask,    XK_h,         moveresize,     {.v = (int []){ 0, 0, -25, 0 } } },
 	TAGKEYS(                        XK_1,                         0)
 	TAGKEYS(                        XK_2,                         1)
 	TAGKEYS(                        XK_3,                         2)
@@ -130,7 +146,7 @@ static Key keys[] = {
 static Button buttons[] = {
 	/* click                event mask      button          function        argument */
 	{ ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
-	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
+//	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
 //	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
 	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },

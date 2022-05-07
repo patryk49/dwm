@@ -88,6 +88,7 @@ static Key keys[] = {
 //	{ MODKEY,                       XK_Tab,       view,           {0} },
 	{ MODKEY,                       XK_x,         killclient,     {0} },
 	{ MODKEY|ShiftMask,             XK_q,         quit,           {0} },
+	{ ControlMask|Mod1Mask,         XK_BackSpace, quit,           {0} },
 	{ MODKEY,                       XK_t,         setlayout,      {.v = &layouts[0]} },
 	{ MODKEY|ShiftMask,             XK_space,     setlayout,      {0} },
 	{ MODKEY,                       XK_space,     togglefloating, {0} },

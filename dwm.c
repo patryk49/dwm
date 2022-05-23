@@ -220,6 +220,7 @@ static void showhide(Client *c);
 static void sigchld(int unused);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
+static void togglealltags(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *);
 static void togglebar(const Arg *arg);
@@ -1833,6 +1834,19 @@ toggletag(const Arg *arg)
 		focus(NULL);
 		arrange(selmon);
 	}
+}
+
+
+void togglealltags(const Arg *arg){
+	if (!selmon->sel) return;
+
+	if ((selmon->sel->tags-1) & selmon->sel->tags){
+		selmon->sel->tags = selmon->tagset[selmon->seltags];
+	} else{
+		selmon->sel->tags = (1 << 9 )- 1;
+	}
+	focus(NULL);
+	arrange(selmon);
 }
 
 void

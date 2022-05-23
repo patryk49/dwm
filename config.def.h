@@ -72,6 +72,7 @@ static const char *cmd_vol_up[] =     { "amixer", "set", "Master", "2dB+", NULL 
 static const char *cmd_mic_mute[] =   { "amixer", "set", "Mic", "toggle", NULL };
 static const char *cmd_br_down[] =    { "setbr", "-200", NULL };
 static const char *cmd_br_up[] =      { "setbr", "+200", NULL };
+static const char *cmd_br_toggle[] =  { "setbr", NULL };
 static const char *cmd_scr_full[] =   { "scrot", HOME_PATH"/screens/%Y-%m-%d.png", NULL };
 static const char *cmd_scr_select[] = { "scrot", "-s", HOME_PATH"/screens/%Y-%m-%d.png", NULL };
 static const char *cmd_browser[] =    { "brave", NULL };
@@ -141,6 +142,7 @@ static Key keys[] = {
 	{ 0,                            0x1008ffb2,   spawn,          {.v = cmd_mic_mute } },
 	{ 0,                            0x1008ff03,   spawn,          {.v = cmd_br_down } },
 	{ 0,                            0x1008ff02,   spawn,          {.v = cmd_br_up } },
+	{ MODKEY|ShiftMask,             XK_z,         spawn,          {.v = cmd_br_toggle } },
 };
 
 /* button definitions */
@@ -148,6 +150,7 @@ static Key keys[] = {
 static Button buttons[] = {
 	/* click                event mask      button          function        argument */
 	{ ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
+	{ ClkLtSymbol,          0,              Button2,        spawn,          {.v = cmd_br_toggle } },
 	{ ClkLtSymbol,          0,              Button3,        togglealltags,  {0} },
 //	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
 //	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },

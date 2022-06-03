@@ -55,7 +55,8 @@
 #define CLEANMASK(mask)         (mask & ~(numlockmask|LockMask) & (ShiftMask|ControlMask|Mod1Mask|Mod2Mask|Mod3Mask|Mod4Mask|Mod5Mask))
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
-#define ISVISIBLE(C)            ((C->tags & C->mon->tagset[C->mon->seltags]))
+#define ISVISIBLEONTAG(C, T)    ((C->tags & T))
+#define ISVISIBLE(C)            ISVISIBLEONTAG(C, C->mon->tagset[C->mon->seltags])
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define MOUSEMASK               (BUTTONMASK|PointerMotionMask)
 #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
@@ -157,6 +158,11 @@ static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interac
 static void arrange(Monitor *m);
 static void arrangemon(Monitor *m);
 static void attach(Client *c);
+static void attachabove(Client *c);
+static void attachaside(Client *c);
+static void attachbelow(Client *c);
+static void attachbottom(Client *c);
+static void attachtop(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
@@ -176,6 +182,7 @@ static void drawbars(void);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
+static void focusmaster(const Arg *arg);
 static void focusin(XEvent *e);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
@@ -196,6 +203,7 @@ static void dwindle(Monitor *mon);
 static void motionnotify(XEvent *e);
 static void movemouse(const Arg *arg);
 static void moveresize(const Arg *arg);
+static Client *nexttagged(Client *c);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
 static void propertynotify(XEvent *e);
@@ -247,6 +255,7 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void zoom(const Arg *arg);
+static void movestack(const Arg *arg);
 
 static pid_t getparentprocess(pid_t p);
 static int isdescprocess(pid_t p, pid_t c);
@@ -430,6 +439,73 @@ attach(Client *c)
 {
 	c->next = c->mon->clients;
 	c->mon->clients = c;
+}
+
+void
+attachabove(Client *c)
+{
+	if (c->mon->sel == NULL || c->mon->sel == c->mon->clients || c->mon->sel->isfloating) {
+		attach(c);
+		return;
+	}
+
+	Client *at;
+	for (at = c->mon->clients; at->next != c->mon->sel; at = at->next);
+	c->next = at->next;
+	at->next = c;
+}
+
+void
+attachaside(Client *c) {
+	Client *at = nexttagged(c);
+	if(!at) {
+		attach(c);
+		return;
+		}
+	c->next = at->next;
+	at->next = c;
+}
+
+void
+attachbelow(Client *c)
+{
+	if(c->mon->sel == NULL || c->mon->sel == c || c->mon->sel->isfloating) {
+		attach(c);
+		return;
+	}
+	c->next = c->mon->sel->next;
+	c->mon->sel->next = c;
+}
+ 
+void
+attachbottom(Client *c)
+{
+	Client *below = c->mon->clients;
+	for (; below && below->next; below = below->next);
+	c->next = NULL;
+	if (below)
+		below->next = c;
+	else
+		c->mon->clients = c;
+}
+
+void
+attachtop(Client *c)
+{
+	int n;
+	Monitor *m = selmon;
+	Client *below;
+
+	for (n = 1, below = c->mon->clients;
+		below && below->next && (below->isfloating || !ISVISIBLEONTAG(below, c->tags) || n != m->nmaster);
+		n = below->isfloating || !ISVISIBLEONTAG(below, c->tags) ? n + 0 : n + 1, below = below->next);
+	c->next = NULL;
+	if (below) {
+		c->next = below->next;
+		below->next = c;
+	}
+	else
+		c->mon->clients = c;
 }
 
 void
@@ -884,6 +960,19 @@ focus(Client *c)
 	drawbars();
 }
 
+void focusmaster(const Arg *arg)
+{
+	Client *c;
+
+	if (selmon->nmaster < 1)
+		return;
+
+	c = nexttiled(selmon->clients);
+
+	if (c)
+		focus(c);
+}
+
 /* there are some broken focus acquiring clients needing extra handling */
 void
 focusin(XEvent *e)
@@ -1143,7 +1232,25 @@ manage(Window w, XWindowAttributes *wa)
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
-	attach(c);
+	switch(attachdirection){
+		case 1:
+			attachabove(c);
+			break;
+		case 2:
+			attachaside(c);
+			break;
+		case 3:
+			attachbelow(c);
+			break;
+		case 4:
+			attachbottom(c);
+			break;
+		case 5:
+			attachtop(c);
+			break;
+		default:
+			attach(c);
+	}
 	attachstack(c);
 	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
 		(unsigned char *) &(c->win), 1);
@@ -1290,6 +1397,16 @@ moveresize(const Arg *arg)
 		m->sel->h + ((int *)arg->v)[3],
 		True);
 	while(XCheckMaskEvent(dpy, EnterWindowMask, &ev));
+}
+
+Client *
+nexttagged(Client *c) {
+	Client *walked = c->mon->clients;
+	for(;
+		walked && (walked->isfloating || !ISVISIBLEONTAG(walked, c->tags));
+		walked = walked->next
+	);
+	return walked;
 }
 
 Client *
@@ -1517,7 +1634,25 @@ sendmon(Client *c, Monitor *m)
 	detachstack(c);
 	c->mon = m;
 	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
-	attach(c);
+	switch(attachdirection){
+		case 1:
+			attachabove(c);
+			break;
+		case 2:
+			attachaside(c);
+			break;
+		case 3:
+			attachbelow(c);
+			break;
+		case 4:
+			attachbottom(c);
+			break;
+		case 5:
+			attachtop(c);
+			break;
+		default:
+			attach(c);
+	}
 	attachstack(c);
 	focus(NULL);
 	arrange(NULL);
@@ -2029,7 +2164,25 @@ updategeom(void)
 					m->clients = c->next;
 					detachstack(c);
 					c->mon = mons;
-					attach(c);
+					switch(attachdirection){
+					case 1:
+						attachabove(c);
+						break;
+					case 2:
+						attachaside(c);
+						break;
+					case 3:
+						attachbelow(c);
+						break;
+					case 4:
+						attachbottom(c);
+						break;
+					case 5:
+						attachtop(c);
+						break;
+					default:
+						attach(c);
+					}
 					attachstack(c);
 				}
 				if (m == selmon)
@@ -2487,8 +2640,54 @@ dwindle(Monitor *mon) {
 
 
 
+void movestack(const Arg *arg) {
+	Client *c = NULL, *p = NULL, *pc = NULL, *i;
 
+	if(arg->i > 0) {
+		/* find the client after selmon->sel */
+		if (selmon->sel)
+			for(c = selmon->sel->next; c && (!ISVISIBLE(c) || c->isfloating); c = c->next);
+		if(!c)
+			for(c = selmon->clients; c && (!ISVISIBLE(c) || c->isfloating); c = c->next);
 
+	}
+	else {
+		/* find the client before selmon->sel */
+		for(i = selmon->clients; i && i != selmon->sel; i = i->next)
+			if(ISVISIBLE(i) && !i->isfloating)
+				c = i;
+		if(!c)
+			for(; i; i = i->next)
+				if(ISVISIBLE(i) && !i->isfloating)
+					c = i;
+	}
+	/* find the client before selmon->sel and c */
+	for(i = selmon->clients; i && (!p || !pc); i = i->next) {
+		if(i->next == selmon->sel)
+			p = i;
+		if(i->next == c)
+			pc = i;
+	}
+
+	/* swap c and selmon->sel selmon->clients in the selmon->clients list */
+	if(c && c != selmon->sel) {
+		Client *temp = selmon->sel->next==c?selmon->sel:selmon->sel->next;
+		selmon->sel->next = c->next==selmon->sel?c:c->next;
+		c->next = temp;
+
+		if(p && p != c)
+			p->next = c;
+		if(pc && pc != selmon->sel)
+			pc->next = selmon->sel;
+
+		if(selmon->sel == selmon->clients)
+			selmon->clients = c;
+		else if(c == selmon->clients)
+			selmon->clients = selmon->sel;
+
+		arrange(selmon);
+	}
+}
 
 
 

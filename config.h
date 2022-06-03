@@ -37,10 +37,11 @@ static const Rule rules[] = {
 };
 
 /* layout(s) */
-static const float mfact     = 0.55; /* factor of master area size [0.05..0.95] */
-static const int nmaster     = 1;    /* number of clients in master area */
-static const int resizehints = 1;    /* 1 means respect size hints in tiled resizals */
-static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
+static const float mfact           = 0.44;  /* factor of master area size [0.05..0.95] */
+static const int   nmaster         = 1;     /* number of clients in master area */
+static const int   resizehints     = 1;     /* 1 means respect size hints in tiled resizals */
+static const int   lockfullscreen  = 1;     /* 1 will force focus on the fullscreen window */
+static const int   attachdirection = 4;     /* 0 default, 1 above, 2 aside, 3 below, 4 bottom, 5 top */
 
 static const Layout layouts[] = {
 	/* symbol    arrange function */
@@ -85,7 +86,11 @@ static Key keys[] = {
 	{ MODKEY,                       XK_k,         focusstack,     {.i = -1 } },
 	{ MODKEY,                       XK_h,         setmfact,       {.f = -0.05} },
 	{ MODKEY,                       XK_l,         setmfact,       {.f = +0.05} },
+	{ MODKEY,                       XK_m,         focusmaster,    {0} },
+	{ MODKEY|ShiftMask,             XK_j,         movestack,      {.i = +1 } },
+	{ MODKEY|ShiftMask,             XK_k,         movestack,      {.i = -1 } },
 	{ MODKEY,                       XK_Return,    zoom,           {0} },
+
 //	{ MODKEY,                       XK_Tab,       view,           {0} },
 	{ MODKEY,                       XK_x,         killclient,     {0} },
 	{ MODKEY|ShiftMask,             XK_q,         quit,           {0} },
@@ -153,7 +158,8 @@ static Button buttons[] = {
 	{ ClkLtSymbol,          0,              Button2,        spawn,          {.v = cmd_br_toggle } },
 	{ ClkLtSymbol,          0,              Button3,        togglealltags,  {0} },
 //	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
-//	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
+//	{ ClkWinTitle,          0,              Button3,        zoom,           {0} },
+	{ ClkWinTitle,          0,              Button2,        killclient,     {0} },
 	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
 	{ ClkClientWin,         MODKEY,         Button2,        togglefloating, {0} },

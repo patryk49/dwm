@@ -15,7 +15,7 @@ options:
 	@echo "CC       = ${CC}"
 
 .c.o:
-	${CC} -c ${CFLAGS} $<
+	${CC} -c ${CFLAGS} -O2 $<
 
 ${OBJ}: config.h config.mk
 

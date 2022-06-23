@@ -56,7 +56,7 @@
 #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
 #define ISVISIBLEONTAG(C, T)    ((C->tags & T))
-#define ISVISIBLE(C)            ISVISIBLEONTAG(C, C->mon->tagset[C->mon->seltags])
+#define ISVISIBLE(C)            ISVISIBLEONTAG(C, C->mon->seltags)
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define MOUSEMASK               (BUTTONMASK|PointerMotionMask)
 #define WIDTH(X)                ((X)->w + 2 * (X)->bw)
@@ -130,7 +130,6 @@ struct Monitor {
 	int wx, wy, ww, wh;   /* window area  */
 	unsigned int seltags;
 	unsigned int sellt;
-	unsigned int tagset[2];
 	int showbar;
 	int topbar;
 	Client *clients;
@@ -367,7 +366,7 @@ applyrules(Client *c)
 		XFree(ch.res_class);
 	if (ch.res_name)
 		XFree(ch.res_name);
-	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+	c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->seltags;
 }
 
 int
@@ -806,11 +805,11 @@ createmon(void)
 	Monitor *m;
 
 	m = ecalloc(1, sizeof(Monitor));
-	m->tagset[0] = m->tagset[1] = 1;
 	for (size_t i=0; i!=9; ++i) m->mfact[i] = mfact;
 	m->nmaster = nmaster;
 	m->showbar = showbar;
 	m->topbar = topbar;
+	m->seltags = 1;
 	m->lt[0] = &layouts[0];
 	m->lt[1] = &layouts[1 % LENGTH(layouts)];
 	strncpy(m->ltsymbol, layouts[0].symbol, sizeof m->ltsymbol);
@@ -895,7 +894,7 @@ drawbar(Monitor *m)
 	x = 0;
 	for (i = 0; i < LENGTH(tags); i++) {
 		w = TEXTW(tags[i]);
-		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+		drw_setscheme(drw, scheme[m->seltags & 1 << i ? SchemeSel : SchemeNorm]);
 		drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
 		if (occ & 1 << i)
 			drw_rect(drw, x + boxs, boxs, boxw, boxw,
@@ -1657,7 +1656,7 @@ sendmon(Client *c, Monitor *m)
 	detach(c);
 	detachstack(c);
 	c->mon = m;
-	c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
+	c->tags = m->seltags; /* assign tags of target monitor */
 	switch(attachdirection){
 		case 1:
 			attachabove(c);
@@ -1778,7 +1777,7 @@ setmfact(const Arg *arg)
 
 	if (!arg || !selmon->lt[selmon->sellt]->arrange) return;
 
-	size_t first_seltag = countr_zero(selmon->tagset[selmon->seltags]);
+	size_t first_seltag = countr_zero(selmon->seltags);
 	f = arg->f < 1.0 ? arg->f + selmon->mfact[first_seltag] : arg->f - 1.0;
 	if (f < 0.05 || f > 0.95) return;
 	
@@ -1939,7 +1938,7 @@ tile(Monitor *m)
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if (n == 0) return;
 
-	float *curr_mfact = &m->mfact[countr_zero(selmon->tagset[selmon->seltags])];
+	float *curr_mfact = &m->mfact[countr_zero(selmon->seltags)];
 	if (n > m->nmaster){
 		mw = m->nmaster ? m->ww * *curr_mfact : 0;
 	} else{
@@ -2002,7 +2001,7 @@ void togglealltags(const Arg *arg){
 	if (!selmon->sel) return;
 
 	if ((selmon->sel->tags-1) & selmon->sel->tags){
-		selmon->sel->tags = selmon->tagset[selmon->seltags];
+		selmon->sel->tags = selmon->seltags;
 	} else{
 		selmon->sel->tags = (1 << 9 )- 1;
 	}
@@ -2013,10 +2012,10 @@ void togglealltags(const Arg *arg){
 void
 toggleview(const Arg *arg)
 {
-	unsigned int newtagset = selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
+	unsigned int newtagset = selmon->seltags ^ (arg->ui & TAGMASK);
 
 	if (newtagset) {
-		selmon->tagset[selmon->seltags] = newtagset;
+		selmon->seltags = newtagset;
 		focus(NULL);
 		arrange(selmon);
 	}
@@ -2346,11 +2345,11 @@ updatewmhints(Client *c)
 void
 view(const Arg *arg)
 {
-	if ((arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
+	if ((arg->ui & TAGMASK) == selmon->seltags)
 		return;
 	selmon->seltags ^= 1; /* toggle sel tagset */
 	if (arg->ui & TAGMASK)
-		selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
+		selmon->seltags = arg->ui & TAGMASK;
 	focus(NULL);
 	arrange(selmon);
 }
@@ -2614,7 +2613,7 @@ dwindle(Monitor *mon) {
 	nw = mon->ww;
 	nh = mon->wh;
 
-	float *curr_mfact = &mon->mfact[countr_zero(selmon->tagset[selmon->seltags])];
+	float *curr_mfact = &mon->mfact[countr_zero(selmon->seltags)];
 
 	for(i = 0, c = nexttiled(mon->clients); c; c = nexttiled(c->next)) {
 		if((i % 2 && nh / 2 > 2 * c->bw) || (!(i % 2) && nw / 2 > 2 * c->bw)) {

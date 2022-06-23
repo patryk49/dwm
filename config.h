@@ -78,6 +78,7 @@ static const char *cmd_scr_full[] =   { "scrot", HOME_PATH"/screens/%Y-%m-%d.png
 static const char *cmd_scr_select[] = { "scrot", "-s", HOME_PATH"/screens/%Y-%m-%d.png", NULL };
 static const char *cmd_browser[] =    { "brave", NULL };
 static const char *cmd_calculator[] = { "st", "-ig", "40x8", "-f", "monospace:size=14", "-e", "kalk", "-d", NULL };
+static const char *cmd_kalkulator[] = { HOME_PATH"/studia/narzedzia_pracy_grupowej/npg_kalkulator/kalkulator", NULL };
 
 static Key keys[] = {
 	/* modifier                     key           function        argument */
@@ -137,6 +138,7 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_t,         spawn,          {.v = termcmd } },
 	{ MODKEY|ShiftMask,             XK_b,         spawn,          {.v = cmd_browser } },
 	{ MODKEY|ShiftMask,             XK_c,         spawn,          {.v = cmd_calculator } },
+	{ MODKEY|ControlMask,           XK_c,         spawn,          {.v = cmd_kalkulator } },
 	{ MODKEY,                       XK_o,         spawn,          {.v = cmd_options } },
 	{ MODKEY|ShiftMask,             XK_m,         spawn,          {.v = cmd_vol_mute } },
 	{ MODKEY|ShiftMask,             XK_f,         spawn,          {.v = cmd_scr_full } },

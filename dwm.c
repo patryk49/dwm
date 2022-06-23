@@ -122,7 +122,7 @@ typedef struct {
 
 struct Monitor {
 	char ltsymbol[16];
-	float mfact;
+	float mfact[9];
 	int nmaster;
 	int num;
 	int by;               /* bar geometry */
@@ -300,6 +300,30 @@ static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
 static xcb_connection_t *xcon;
+
+
+
+
+// function for counting zeros
+static size_t countr_zero(size_t x){
+  if (x == 0) return 0;
+#ifdef __GNUC__
+  return __builtin_ctzll(x);
+#else
+  uint8_t table[64] = {
+      0,  1,  2,  7,  3,  13, 8,  27, 4,  33, 14, 36, 9,  49, 28, 19,
+      5,  25, 34, 17, 15, 53, 37, 55, 10, 46, 50, 39, 29, 42, 20, 57,
+      63, 6,  12, 26, 32, 35, 48, 18, 24, 16, 52, 54, 45, 38, 41, 56,
+      62, 11, 31, 47, 23, 51, 44, 40, 61, 30, 22, 43, 60, 21, 59, 58};
+  return (size_t)table[(x & ~x + 1) * 0x218A7A392DD9ABF >> 58 & 0x3F];
+#endif
+}
+
+
+
+
+
+
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -783,7 +807,7 @@ createmon(void)
 
 	m = ecalloc(1, sizeof(Monitor));
 	m->tagset[0] = m->tagset[1] = 1;
-	m->mfact = mfact;
+	for (size_t i=0; i!=9; ++i) m->mfact[i] = mfact;
 	m->nmaster = nmaster;
 	m->showbar = showbar;
 	m->topbar = topbar;
@@ -1752,12 +1776,13 @@ setmfact(const Arg *arg)
 {
 	float f;
 
-	if (!arg || !selmon->lt[selmon->sellt]->arrange)
-		return;
-	f = arg->f < 1.0 ? arg->f + selmon->mfact : arg->f - 1.0;
-	if (f < 0.05 || f > 0.95)
-		return;
-	selmon->mfact = f;
+	if (!arg || !selmon->lt[selmon->sellt]->arrange) return;
+
+	size_t first_seltag = countr_zero(selmon->tagset[selmon->seltags]);
+	f = arg->f < 1.0 ? arg->f + selmon->mfact[first_seltag] : arg->f - 1.0;
+	if (f < 0.05 || f > 0.95) return;
+	
+	selmon->mfact[first_seltag] = f;
 	arrange(selmon);
 }
 
@@ -1912,13 +1937,15 @@ tile(Monitor *m)
 	Client *c;
 
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
-	if (n == 0)
-		return;
+	if (n == 0) return;
 
-	if (n > m->nmaster)
-		mw = m->nmaster ? m->ww * m->mfact : 0;
-	else
+	float *curr_mfact = &m->mfact[countr_zero(selmon->tagset[selmon->seltags])];
+	if (n > m->nmaster){
+		mw = m->nmaster ? m->ww * *curr_mfact : 0;
+	} else{
+		if (n == m->nmaster) *curr_mfact = mfact;
 		mw = m->ww;
+	}
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
 		if (i < m->nmaster) {
 			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
@@ -1961,8 +1988,7 @@ toggletag(const Arg *arg)
 {
 	unsigned int newtags;
 
-	if (!selmon->sel)
-		return;
+	if (!selmon->sel) return;
 	newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
 	if (newtags) {
 		selmon->sel->tags = newtags;
@@ -2621,7 +2647,7 @@ fibonacci(Monitor *mon, int s) {
 			if(i == 0)
 			{
 				if(n != 1)
-					nw = mon->ww * mon->mfact;
+					nw = mon->ww * mon->mfact[countr_zero(selmon->tagset[selmon->seltags])];
 				ny = mon->wy;
 			}
 			else if(i == 1)

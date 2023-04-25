@@ -123,7 +123,7 @@ typedef struct {
 struct Monitor {
 	char ltsymbol[16];
 	float mfact[9];
-	int nmaster;
+	int nmaster[9];
 	int num;
 	int by;               /* bar geometry */
 	int mx, my, mw, mh;   /* screen size */
@@ -249,6 +249,8 @@ static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
 static void updatewmhints(Client *c);
 static void view(const Arg *arg);
+static void view_prev(const Arg *arg);
+static void view_next(const Arg *arg);
 static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
 static int xerror(Display *dpy, XErrorEvent *ee);
@@ -304,21 +306,21 @@ static xcb_connection_t *xcon;
 
 
 
-// function for counting zeros
+// function for counting zeros (copied from libstdc++)
 static size_t countr_zero(size_t x){
-  if (x == 0) return 0;
+	if (x == 0) return 0;
 #ifdef __GNUC__
-  return __builtin_ctzll(x);
+	return __builtin_ctzll(x);
 #else
-  uint8_t table[64] = {
-      0,  1,  2,  7,  3,  13, 8,  27, 4,  33, 14, 36, 9,  49, 28, 19,
-      5,  25, 34, 17, 15, 53, 37, 55, 10, 46, 50, 39, 29, 42, 20, 57,
-      63, 6,  12, 26, 32, 35, 48, 18, 24, 16, 52, 54, 45, 38, 41, 56,
-      62, 11, 31, 47, 23, 51, 44, 40, 61, 30, 22, 43, 60, 21, 59, 58};
-  return (size_t)table[(x & ~x + 1) * 0x218A7A392DD9ABF >> 58 & 0x3F];
+	static const uint8_t table[64] = {
+		0,  1,  2,  7,  3,  13, 8,  27, 4,  33, 14, 36, 9,  49, 28, 19,
+		5,  25, 34, 17, 15, 53, 37, 55, 10, 46, 50, 39, 29, 42, 20, 57,
+		63, 6,  12, 26, 32, 35, 48, 18, 24, 16, 52, 54, 45, 38, 41, 56,
+		62, 11, 31, 47, 23, 51, 44, 40, 61, 30, 22, 43, 60, 21, 59, 58
+	};
+	return (size_t)table[(x & ~x + 1) * 0x218A7A392DD9ABF >> 58 & 0x3F];
 #endif
 }
-
 
 
 
@@ -521,7 +523,7 @@ attachtop(Client *c)
 	Client *below;
 
 	for (n = 1, below = c->mon->clients;
-		below && below->next && (below->isfloating || !ISVISIBLEONTAG(below, c->tags) || n != m->nmaster);
+		below && below->next && (below->isfloating || !ISVISIBLEONTAG(below, c->tags) || n != m->nmaster[countr_zero(selmon->seltags)]);
 		n = below->isfloating || !ISVISIBLEONTAG(below, c->tags) ? n + 0 : n + 1, below = below->next);
 	c->next = NULL;
 	if (below) {
@@ -806,8 +808,10 @@ createmon(void)
 	Monitor *m;
 
 	m = ecalloc(1, sizeof(Monitor));
-	for (size_t i=0; i!=9; ++i) m->mfact[i] = mfact;
-	m->nmaster = nmaster;
+	for (size_t i=0; i!=9; ++i){
+		m->mfact[i] = mfact;
+		m->nmaster[i] = nmaster;
+	}
 	m->showbar = showbar;
 	m->topbar = topbar;
 	m->seltags = 1;
@@ -988,7 +992,7 @@ void focusmaster(const Arg *arg)
 {
 	Client *c;
 
-	if (selmon->nmaster < 1)
+	if (selmon->nmaster[countr_zero(selmon->seltags)] < 1)
 		return;
 
 	c = nexttiled(selmon->clients);
@@ -1158,14 +1162,15 @@ grabkeys(void)
 void
 incnmaster(const Arg *arg)
 {
-	selmon->nmaster = MAX(selmon->nmaster + arg->i, 0);
+	int tag_index = countr_zero(selmon->seltags);
+	selmon->nmaster[tag_index] = MAX(selmon->nmaster[tag_index] + arg->i, 0);
 	arrange(selmon);
 }
 
 void
 setnmaster(const Arg *arg)
 {
-	selmon->nmaster = arg->i;
+	selmon->nmaster[countr_zero(selmon->seltags)] = arg->i;
 	arrange(selmon);
 }
 
@@ -1945,17 +1950,20 @@ tile(Monitor *m)
 
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if (n == 0) return;
+	
+	int tag_index = countr_zero(selmon->seltags);
+	float *curr_mfact = &m->mfact[tag_index];
+	int curr_nmaster = m->nmaster[tag_index];
 
-	float *curr_mfact = &m->mfact[countr_zero(selmon->seltags)];
-	if (n > m->nmaster){
-		mw = m->nmaster ? m->ww * *curr_mfact : 0;
+	if (n > curr_nmaster){
+		mw = curr_nmaster ? m->ww * *curr_mfact : 0;
 	} else{
-		if (n == m->nmaster) *curr_mfact = mfact;
+		if (n == curr_nmaster) *curr_mfact = mfact;
 		mw = m->ww;
 	}
 	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-		if (i < m->nmaster) {
-			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
+		if (i < curr_nmaster) {
+			h = (m->wh - my) / (MIN(n, curr_nmaster) - i);
 			resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
 			if (my + HEIGHT(c) < m->wh)
 				my += HEIGHT(c);
@@ -2350,14 +2358,23 @@ updatewmhints(Client *c)
 	}
 }
 
-void
-view(const Arg *arg)
-{
-	if ((arg->ui & TAGMASK) == selmon->seltags)
-		return;
-	selmon->seltags ^= 1; /* toggle sel tagset */
-	if (arg->ui & TAGMASK)
-		selmon->seltags = arg->ui & TAGMASK;
+void view(const Arg *arg){
+	if ((arg->ui & TAGMASK) == selmon->seltags) return;
+	selmon->seltags = arg->ui & TAGMASK;
+	focus(NULL);
+	arrange(selmon);
+}
+
+void view_prev(const Arg *arg){
+	unsigned slt = selmon->seltags & TAGMASK;
+	selmon->seltags = (slt>>1u | slt<<(LENGTH(tags)-1u)) & TAGMASK;
+	focus(NULL);
+	arrange(selmon);
+}
+
+void view_next(const Arg *arg){
+	unsigned slt = selmon->seltags & TAGMASK;
+	selmon->seltags = (slt<<1u | slt>>(LENGTH(tags)-1u)) & TAGMASK;
 	focus(NULL);
 	arrange(selmon);
 }

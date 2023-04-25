@@ -64,32 +64,36 @@ static const Layout layouts[] = {
 /* commands */
 static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
-static const char *termcmd[]  = { HOME_PATH"repos/st/st", NULL };
+static const char *termcmd[]  = { HOME_PATH"/repos/st/st", NULL };
 
 static const char *cmd_options[] =    { HOME_PATH"/.options_run", NULL };
+static const char *cmd_pkill[] =      { HOME_PATH"/.options/kill_process", NULL };
 static const char *cmd_vol_mute[] =   { "amixer", "set", "Master", "toggle", NULL };
 static const char *cmd_vol_down[] =   { "amixer", "set", "Master", "2dB-", NULL };
 static const char *cmd_vol_up[] =     { "amixer", "set", "Master", "2dB+", NULL };
 static const char *cmd_mic_mute[] =   { "amixer", "set", "Mic", "toggle", NULL };
+static const char *cmd_alsamixer[] =  { "st", "alsamixer", NULL };
 static const char *cmd_br_down[] =    { "setbr", "-200", NULL };
 static const char *cmd_br_up[] =      { "setbr", "+200", NULL };
 static const char *cmd_br_toggle[] =  { "setbr", NULL };
 static const char *cmd_scr_full[] =   { "scrot", HOME_PATH"/screens/%Y-%m-%d.png", NULL };
 static const char *cmd_scr_select[] = { "scrot", "-s", HOME_PATH"/screens/%Y-%m-%d.png", NULL };
 static const char *cmd_browser[] =    { "brave", NULL };
-static const char *cmd_calculator[] = { HOME_PATH"repos/st/st", "-ig", "40x8", "-f", "monospace:size=14", "-e", "kalk", "-d", NULL };
-static const char *cmd_kalkulator[] = { HOME_PATH"/studia/narzedzia_pracy_grupowej/npg_kalkulator/kalkulator", NULL };
+static const char *cmd_calculator[] = { HOME_PATH"/repos/st/st", "-ig", "40x8", "-f", "monospace:size=14", "-e", "bc", NULL };
+static const char *cmd_kalkulator[] = { HOME_PATH"/repos/kalkulator/gui_kalkulator", NULL };
 
 static Key keys[] = {
 	/* modifier                     key           function        argument */
 	{ MODKEY,                       XK_b,         togglebar,      {0} },
 	{ MODKEY,                       XK_j,         focusstack,     {.i = +1 } },
 	{ MODKEY,                       XK_k,         focusstack,     {.i = -1 } },
-	{ MODKEY,                       XK_h,         setmfact,       {.f = -0.05} },
-	{ MODKEY,                       XK_l,         setmfact,       {.f = +0.05} },
+	{ MODKEY,                       XK_h,         view_prev,      {0} },
+	{ MODKEY,                       XK_l,         view_next,      {0} },
 	{ MODKEY,                       XK_m,         focusmaster,    {0} },
 	{ MODKEY|ShiftMask,             XK_j,         movestack,      {.i = +1 } },
 	{ MODKEY|ShiftMask,             XK_k,         movestack,      {.i = -1 } },
+	{ MODKEY|ShiftMask,             XK_h,         setmfact,       {.f = -0.05} },
+	{ MODKEY|ShiftMask,             XK_l,         setmfact,       {.f = +0.05} },
 	{ MODKEY,                       XK_Return,    zoom,           {0} },
 
 //	{ MODKEY,                       XK_Tab,       view,           {0} },
@@ -100,7 +104,7 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_space,     setlayout,      {0} },
 	{ MODKEY,                       XK_space,     togglefloating, {0} },
 	{ MODKEY,                       XK_0,         view,           {.ui = ~0 } },
-	{ MODKEY|ShiftMask,             XK_0,         togglealltags,  {0} },
+	{ MODKEY|ControlMask,           XK_0,         togglealltags,  {0} },
 	{ MODKEY|ControlMask,           XK_a,         togglealltags,  {0} },
 	{ MODKEY,                       XK_comma,     incnmaster,     {.i = -1 } },
 	{ MODKEY,                       XK_period,    incnmaster,     {.i = +1 } },
@@ -137,11 +141,13 @@ static Key keys[] = {
 	{ MODKEY,                       XK_p,         spawn,          {.v = dmenucmd } },
 	{ MODKEY|ShiftMask,             XK_Return,    spawn,          {.v = termcmd } },
 	{ MODKEY|ShiftMask,             XK_t,         spawn,          {.v = termcmd } },
+	{ MODKEY|ShiftMask,             XK_x,         spawn,          {.v = cmd_pkill } },
 	{ MODKEY|ShiftMask,             XK_b,         spawn,          {.v = cmd_browser } },
 	{ MODKEY|ShiftMask,             XK_c,         spawn,          {.v = cmd_calculator } },
 	{ MODKEY|ControlMask,           XK_c,         spawn,          {.v = cmd_kalkulator } },
 	{ MODKEY,                       XK_o,         spawn,          {.v = cmd_options } },
 	{ MODKEY|ShiftMask,             XK_m,         spawn,          {.v = cmd_vol_mute } },
+	{ MODKEY|ShiftMask,             XK_a,         spawn,          {.v = cmd_alsamixer } },
 	{ MODKEY|ShiftMask,             XK_f,         spawn,          {.v = cmd_scr_full } },
 	{ MODKEY|ShiftMask,             XK_s,         spawn,          {.v = cmd_scr_select } },
 	{ 0,                            0x1008ff12,   spawn,          {.v = cmd_vol_mute } },
